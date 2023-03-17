@@ -13,6 +13,13 @@ fn rotate(notes: NoteCollection) -> NoteCollection {
     shifted_notes
 }
 
+fn note_collection_distance(a: &NoteCollection, b: &NoteCollection) -> i8 {
+    if a.len() != b.len() {
+        panic!("Cannot calculate distance between note collections of different lengths");
+    }
+    a.iter().zip(b.iter()).map(|(a_item, b_item)| (a_item - b_item).abs()).sum()
+}
+
 #[derive(Debug)]
 struct Scale {
     notes: NoteCollection,
@@ -21,8 +28,8 @@ struct Scale {
 
 impl Scale {
     fn new(notes: NoteCollection) -> Scale {
-        let mut mode = notes.clone();
         let mut modes = HashSet::new();
+        let mut mode = notes.clone();
         modes.insert(mode.clone());
         loop {
             mode = rotate(mode);
@@ -41,15 +48,32 @@ impl Scale {
     fn is_mode_of(&self, other: &Scale) -> bool {
         self.modes.intersection(&other.modes).count() > 0
     }
+
+    fn distance_from(&self, other: &Scale) -> i8 {
+        if let Some(distance) = self.modes.iter().map(
+            |mode| note_collection_distance(mode, &other.notes)
+        ).min() {
+            return distance;
+        };
+        0
+    }
 }
 
 fn main() {
     let major = Scale::new(vec!(0, 2, 4, 5, 7, 9, 11));
-    println!("This is the major scale: {:?}", major);
+    let melodic_minor = Scale::new(vec!(0, 2, 3, 5, 7, 9, 11));
+    let hungarian_minor = Scale::new(vec!(0, 2, 3, 6, 7, 8, 11));
+    for scale in [&major, &melodic_minor] {
+        println!(
+            "Distance to Hungarian Minor: {:?} = {}",
+            scale,
+            hungarian_minor.distance_from(scale),
+        );
+    }
+    major.distance_from(&melodic_minor);
 }
 
 #[cfg(test)]
-
 mod tests {
     use super::*;
 
@@ -90,5 +114,13 @@ mod tests {
         let melodic_minor = Scale::new(vec!(0, 2, 3, 5, 7, 9, 11));
         assert!(!major.equals(&melodic_minor));
         assert!(!major.is_mode_of(&melodic_minor));
+    }
+
+    #[test]
+    fn test_scale_distance() {
+        let major = Scale::new(vec!(0, 2, 4, 5, 7, 9, 11));
+        let melodic_minor = Scale::new(vec!(0, 2, 3, 5, 7, 9, 11));
+        assert_eq!(major.distance_from(&major), 0);
+        assert_eq!(major.distance_from(&melodic_minor), 1);
     }
 }
